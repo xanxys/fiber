@@ -1,7 +1,12 @@
 "use strict";
 
-const size = 1024;
-const world = new Uint16Array(size);
+const size = 128;
+const numThread = 4;
+const state = new Uint16Array(size * numThread);
+const topology = new Uint8Array(size * numThread);
+
+let currThreadIx = 0
+let currCellIx = 0;
 
 function redraw(scale, originX) {
     let canvas = document.getElementById("main");
@@ -14,24 +19,109 @@ function redraw(scale, originX) {
     ctx.translate(originX, 0);
     ctx.scale(scale, scale);
 
-    ctx.fillStyle = "black";
+    ctx.font = "10px 'Inconsolata'";
+    
     for (let i = 0; i < size; i++) {
-        const label = ("0000" + world[i].toString(16)).substr(-4);
-        ctx.fillText(label, i * 30, 10);
+        for (let threadIx = 0; threadIx < numThread; threadIx++) {
+            ctx.fillStyle = (threadIx === currThreadIx && i === currCellIx) ? "red" : "black";
+            const label = ("0000" + state[i * numThread + threadIx].toString(16)).substr(-4);
+            ctx.fillText(label, i * 24, 12 * (threadIx + 1));
+        }
     }
 
     ctx.restore();
 }
 
 function cleanParticles() {
-    world.fill(0);
+    currThreadIx = 0;
+    currCellIx = 0;
+
+    state.fill(0);
+
+    // Generate random topology
+    const permutation = new Array(numThread);
+    for (let cellIx = 0; cellIx < size; cellIx++) {
+        // Randomize permutation
+        for (let i = numThread - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
+        }
+
+        // Pair-wise tangling
+        for (let i = 0; i < numThread; i+=2) {
+            const thread0 = permutation[i];
+            const thread1 = permutation[(i + 1) % numThread];
+
+            topology[cellIx * numThread + thread0] = thread1;
+            topology[cellIx * numThread + thread1] = thread0;
+        }
+    }
 }
 
 function addRandom(n) {
+    for (let cellIx = 0; cellIx < n; cellIx++) {
+        for (let threadIx = 0; threadIx < numThread; threadIx++) {
+            state[cellIx * numThread + threadIx] = Math.floor(Math.random() * 0xffff);
+        }
+    }
 }
 
+function decodeAddress(baseThreadIx, baseCellIx, addr6) {
+    const alt = (addr6 & 0x20) !== 0; // TODO: implement
+    const negative = (addr6 & 0x10) !== 0;
+    const abs_val = (addr6 & 0xf) + 1;
+    const val = negative ? -abs_val : abs_val;
+
+    const threadIx = alt ? topology[baseCellIx * numThread + baseThreadIx] : baseThreadIx;
+    const cellIx = (baseCellIx + val + size) % size;
+    return cellIx * numThread + threadIx;
+}
+
+function execInstruction(threadIx, cellIx) {
+    // exec(1), inst(3), op1(6), op2(6)
+    const instruction = state[cellIx * numThread + threadIx];
+    if ((instruction & 0x80) === 0) {
+        return;
+    }
+    const inst_type = (instruction >> 12) & 0x7;
+    const op1 = decodeAddress(threadIx, cellIx, (instruction >> 6) & 0x3f);
+    const op2 = decodeAddress(threadIx, cellIx, instruction & 0x3f);
+    switch(inst_type) {
+        case 0: // mov
+            state[op1] = state[op2];
+            break;
+        case 1: // add
+            state[op1] += state[op2];
+            break;
+        case 2: // cshl (cyclic shift left)
+            const v = state[op1] << (state[op2] % 16);
+            state[op1] = v | (v >> 16);
+            break;
+        case 3: // or
+            state[op1] |= state[op2];
+            break;
+        case 4: // and
+            state[op1] &= state[op2];
+            break;
+        case 5: // ssub (saturating sub)
+            state[op1] = Math.max(0, state[op1] - state[op2]);
+            break;
+        case 6: // load V, A
+            state[op1] = state[decodeAddress(threadIx, cellIx, state[op2] & 0x3f)];
+            break;
+        case 7: // store V, A
+            state[decodeAddress(threadIx, cellIx, state[op2] & 0x3f)] = state[op1];
+            break;
+    }
+}
 
 function step() {
+    execInstruction(currThreadIx, currCellIx);
+    currThreadIx++;
+    if (currThreadIx >= numThread) {
+        currThreadIx = 0;
+        currCellIx = (currCellIx + 1) % size;
+    }
 }
 
 
