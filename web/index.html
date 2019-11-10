@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>fiber - 1.5D coreworld OE experiment</title>
+</head>
+
+<body>
+    <div id="app">
+        <div>
+            <canvas id="main" width="800" height="400" @mousedown="dragStart" @mouseleave="dragStop" @mouseup="dragStop"
+                @mousemove="drag" @mousewheel="zoom"></canvas>
+        </div>
+
+        <button @click="clean">Clean</button>
+        <button @click="addRandom(500)">+random x 500</button>
+
+        <div>tick={{tick}}</div>
+        <button @click="clickStep">Step</button>
+        <button @click="clickTogglePlaying">{{interval === null ? "Start" : "Stop"}}</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="./main.js" type="module"></script>
+</body>
+
+</html>
