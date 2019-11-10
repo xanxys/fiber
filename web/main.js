@@ -19,13 +19,21 @@ function redraw(scale, originX) {
     ctx.translate(originX, 0);
     ctx.scale(scale, scale);
 
-    ctx.font = "10px 'Inconsolata'";
+    
     
     for (let i = 0; i < size; i++) {
         for (let threadIx = 0; threadIx < numThread; threadIx++) {
-            ctx.fillStyle = (threadIx === currThreadIx && i === currCellIx) ? "red" : "black";
-            const label = ("0000" + state[i * numThread + threadIx].toString(16)).substr(-4);
-            ctx.fillText(label, i * 24, 12 * (threadIx + 1));
+            const data = state[i * numThread + threadIx];
+            ctx.fillStyle = (threadIx === currThreadIx && i === currCellIx) ? "red" : (instToExecFlag(data) ? "black" : "gray");
+
+            const num = ("0000" + data.toString(16)).substr(-4);
+            const inst = instToString(data);
+
+            ctx.font = "10px 'Inconsolata'";
+            ctx.fillText(num, i * 24, 20 * (threadIx + 1));
+
+            ctx.font = "3px sans-serif";
+            ctx.fillText(inst, i * 24, 20 * (threadIx + 1) + 5);
         }
     }
 
@@ -77,6 +85,41 @@ function decodeAddress(baseThreadIx, baseCellIx, addr6) {
     return cellIx * numThread + threadIx;
 }
 
+function instToExecFlag(instruction) {
+    return (instruction & 0x80) !== 0;
+}
+
+function addr6ToString(addr6) {
+    const alt = (addr6 & 0x20) !== 0; // TODO: implement
+    const negative = (addr6 & 0x10) !== 0;
+    const abs_val = (addr6 & 0xf) + 1;
+    return (alt ? "|" : "") + (negative ? "-" : "+") + abs_val.toString();
+}
+
+function instToString(instruction) {
+    const inst_type = (instruction >> 12) & 0x7;
+    const op1 = addr6ToString((instruction >> 6) & 0x3f);
+    const op2 = addr6ToString(instruction & 0x3f);
+    switch(inst_type) {
+        case 0:
+            return `mov ${op1},${op2}`;
+        case 1:
+            return `add ${op1},${op2}`;
+        case 2:
+            return `cshl ${op1},${op2}`;
+        case 3: // or
+            return `or ${op1},${op2}`;
+        case 4: // and
+            return `and ${op1},${op2}`;
+        case 5: // ssub (saturating sub)
+            return `ssub ${op1},${op2}`;
+        case 6: // load V, A
+            return `ld ${op1},[${op2}]`;
+        case 7: // store V, A
+            return `st ${op1},[${op2}]`;
+    }
+}
+
 function execInstruction(threadIx, cellIx) {
     // exec(1), inst(3), op1(6), op2(6)
     const instruction = state[cellIx * numThread + threadIx];
@@ -91,11 +134,11 @@ function execInstruction(threadIx, cellIx) {
             state[op1] = state[op2];
             break;
         case 1: // add
-            state[op1] += state[op2];
+            state[op1] = (state[op1] + state[op2]) & 0xffff;
             break;
         case 2: // cshl (cyclic shift left)
             const v = state[op1] << (state[op2] % 16);
-            state[op1] = v | (v >> 16);
+            state[op1] = (v & 0xffff) | (v >> 16);
             break;
         case 3: // or
             state[op1] |= state[op2];
