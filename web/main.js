@@ -253,8 +253,10 @@ function main() {
                     return;
                 }
                 this.interval = setInterval(() => {
-                    step();
-                    this.tick += 1;
+                    for (let i = 0; i < numThread * size; i++) {
+                        step();
+                        this.tick += 1;
+                    }
                     this.redraw();
                 }, 50);    
             },
