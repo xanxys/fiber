@@ -105,8 +105,13 @@ class ConnectionView {
         }
 
         console.log("num groups=", new Array(new Array(this.getGroups().values()).filter(g => g.length > 1)).length);
-
-
+        const gs = [];
+        for (let g of this.getGroups().values()) {
+            if (g.length > 1) {
+                gs.push(g);
+            }
+        }
+        return gs;
     }
 
     getWrittenPos(stCopy) {
@@ -189,6 +194,26 @@ function redraw(scale, originX) {
     ctx.save();
     ctx.translate(originX, 0);
     ctx.scale(scale, scale);
+
+    
+    const connectionView = new ConnectionView();
+    const connectionEntities = connectionView.analyzeSingleSweep();
+    const colors = ["blue", "green", "gray"];
+    for (let entityIx = 0; entityIx < connectionEntities.length; entityIx++) {
+        const color = colors[entityIx % 3];
+        connectionEntities[entityIx].forEach(pos => {
+            const threadIx = pos % numThread;
+            const cellIx = Math.floor(pos / numThread);
+
+            ctx.fillStyle = color;
+            console.log(threadIx, cellIx);
+            ctx.fillRect(cellIx * 24, 20 * threadIx, 24, 20);
+
+        });
+
+    }
+
+
     
     for (let i = 0; i < size; i++) {
         for (let threadIx = 0; threadIx < numThread; threadIx++) {
@@ -206,8 +231,6 @@ function redraw(scale, originX) {
         }
     }
 
-    const connectionView = new ConnectionView();
-    connectionView.analyzeSingleSweep();
 
     ctx.restore();
 }
