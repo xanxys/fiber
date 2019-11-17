@@ -17,6 +17,14 @@ class WorldState {
         this.currCellIx = 0;
     }
 
+    clone() {
+        const st = new WorldState();
+        st.state = new Uint16Array(this.state);
+        st.currThreadIx = this.currThreadIx;
+        st.currCellIx = this.currCellIx;
+        return st;
+    }
+
     reset() {
         this.currThreadIx = 0;
         this.currCellIx = 0;
@@ -84,9 +92,45 @@ class ConnectionView {
     }
 
     analyzeSingleSweep() {
+        const stCopy = canonicalState.clone();
         this.disconnectAll();
 
+        for (let i = 0; i < numThread * size; i++) {
+            const src = encodePos(stCopy.currCellIx, stCopy.currThreadIx);
+            const affectedPos = this.getWrittenPos(stCopy);
+            if (affectedPos !== null) {
+                this.connect(src, affectedPos);
+            }
+            stCopy.step();
+        }
 
+        console.log("num groups=", new Array(new Array(this.getGroups().values()).filter(g => g.length > 1)).length);
+
+
+    }
+
+    getWrittenPos(stCopy) {
+        const instruction = stCopy.state[stCopy.currCellIx * numThread + stCopy.currThreadIx];
+        if ((instruction & 0x80) === 0) {
+            return null;
+        }
+
+        const inst_type = (instruction >> 12) & 0x7;
+        const op1 = decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, (instruction >> 6) & 0x3f);
+        const op2 = decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, instruction & 0x3f);
+        switch(inst_type) {
+            case 0: // mov
+            case 1: // add
+            case 2: // cshl (cyclic shift left)
+            case 3: // or
+            case 4: // and
+            case 5: // ssub (saturating sub)
+                return op1;
+            case 6: // load V, A
+                return op1;
+            case 7: // store V, A
+                return decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, stCopy.state[op2] & 0x3f);
+        }
     }
 
     disconnectAll() {
@@ -122,7 +166,7 @@ class ConnectionView {
     // return Array<Array<pos>>
     getGroups() {
         const groups = new Map();
-        for (let i = 0; i < this.unionfind_parent; i++) {
+        for (let i = 0; i < this.unionfind_parent.length; i++) {
             const root = this.rootOf(i);
             if (groups.has(root)) {
                 groups.get(root).push(i);
@@ -163,6 +207,7 @@ function redraw(scale, originX) {
     }
 
     const connectionView = new ConnectionView();
+    connectionView.analyzeSingleSweep();
 
     ctx.restore();
 }
