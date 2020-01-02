@@ -5,6 +5,8 @@ It's also an esotric programming environment.
 
 I created Fiber to achieve following objectives, unlike existing Artificial Life systems.
 
+[Web Playground Link](https://xanxys.github.io/fiber/web/index.html)
+
 ### 1. Balance of inherent and emergent complexity
 Very simple (e.g. Conways's Life) system requires too elaborate structure to achieve self replication and universal construction,
 and it's inconceivable to observe emergence of "innovative" evolutuion in realistic compute resource.
@@ -40,7 +42,7 @@ Assume Fiber-1M where most cells are 0-filled initially, and only first K (<1000
 
 Q1. Create an initial state that eventually copies value (non-executable) of cell 0, to cell 500*1000.
 
-Q2. Extennsion of Q1: Instead of cell 0, copy cell 0...cell A-1 to cell 500*1000...500*1000+A-1.
+Q2. Extennsion of Q1: Instead of cell 0, copy cell 0...cell A-1 to cell 500\*1000...500\*1000+A-1.
 
 Q3. Prove Turing-completeness; Come up with a mapping function (input: brainfuck program, output: finite initial state) that interprets the program.
 
