@@ -226,7 +226,7 @@ function redraw(scale, originY) {
     ctx.restore();
 }
 
-function cleanParticles() {
+function cleanWorldState() {
     canonicalState.reset();
 }
 
@@ -291,7 +291,6 @@ function main() {
         data: {
             interval: null,
             tick: 0,
-            numParticles: 0,
 
             // viewport
             viewportScale: 2, // px/space
@@ -302,7 +301,8 @@ function main() {
                 return pCanvas.clone().sub(this.viewportOrigin).mult(1 / this.viewportScale);
             },
             clean: function() {
-                cleanParticles();
+                this.stopStepping();
+                cleanWorldState();
                 this.tick = 0;
                 this.redraw();
             },
@@ -310,20 +310,7 @@ function main() {
                 addRandom(num);
                 this.redraw();
             },
-            addGlider1: function(num) {
-                addPatternsRandomly(glider1, num);
-                this.redraw();
-            },
-            addPuffer1: function(num) {
-                addPatternsRandomly(puffer1, num);
-                this.redraw();
-            },
-            addPuffer2: function(num) {
-                addPatternsRandomly(puffer2, num);
-                this.redraw();
-            },
             redraw: function() {
-                this.numParticles = 0;
                 redraw(this.viewportScale, this.viewportOrigin);
             },
             scrollZoom: function(ev) {
@@ -349,6 +336,7 @@ function main() {
                 if (this.interval !== null) {
                     return;
                 }
+                this.finishMicrostep();
                 this.interval = setInterval(() => {
                     for (let i = 0; i < size; i++) {
                         step();
@@ -365,6 +353,28 @@ function main() {
                 this.interval = null;
             },
             clickStep: function() {
+                if (this.finishMicrostep()) {
+                    for (var i = 0; i < size; i++) {
+                        step();
+                        this.tick += 1;
+                    }
+                }
+                this.redraw();
+            },
+            /// returns: already finished
+            finishMicrostep: function() {
+                if (this.tick % size === 0) {
+                    return true;
+                }
+                
+                var remaining = size - this.tick % size;
+                for (var i = 0; i < remaining; i++) {
+                    step();
+                    this.tick += 1;
+                }
+                return false;
+            },
+            clickMicroStep: function() {
                 step();
                 this.tick += 1;
                 this.redraw();
@@ -392,7 +402,7 @@ function main() {
         },
     });
 
-    cleanParticles();
+    cleanWorldState();
     addRandom();
     vm.startStepping();
 }
