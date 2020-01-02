@@ -190,7 +190,7 @@ function redraw(scale, originY) {
     
     const connectionView = new ConnectionView();
     const connectionEntities = connectionView.analyzeSingleSweep();
-    const colors = ["blue", "green", "gray"];
+    const colors = ["lightblue", "lightgreen", "lightpink", "lightcoral", "lightsalmon"];
     for (let entityIx = 0; entityIx < connectionEntities.length; entityIx++) {
         const color = colors[entityIx % 3];
         connectionEntities[entityIx].forEach(pos => {
@@ -198,13 +198,12 @@ function redraw(scale, originY) {
 
             ctx.fillStyle = color;
             console.log(cellIx);
-            ctx.fillRect(cellIx * 24, 20 * threadIx, 24, 20);
+            ctx.fillRect(0, cellIx * 10 + 2, 300, 10);
         });
     }
     
     for (let i = 0; i < size; i++) {
         const data = canonicalState.state[i];
-        ctx.fillStyle = (i === canonicalState.currCellIx) ? "red" : (instToExecFlag(data) ? "black" : "gray");
 
         const numHex = ("0000" + data.toString(16)).substr(-4);
         const numDec = ("     " + data.toString(10)).substr(-5);
@@ -212,11 +211,15 @@ function redraw(scale, originY) {
 
         ctx.font = "10px 'Inconsolata'";
 
+        ctx.fillStyle = (i === canonicalState.currCellIx) ? "red" : "black";
         ctx.fillText(("      " + i.toString(10)).substr(-6), 0, i * 10);
+
+        ctx.fillStyle = "black";
         ctx.fillText(numHex, 40, i * 10);
         ctx.fillText(numDec, 65, i * 10);
+
+        ctx.fillStyle = instToExecFlag(data) ? "black" : "#888";
         ctx.fillText(inst, 100, i * 10);
-        //ctx.fillText(inst, 70, i * 10);
     }
 
 
@@ -263,21 +266,21 @@ function instToString(instruction) {
     const op2 = addr6ToString(instruction & 0x3f);
     switch(inst_type) {
         case 0:
-            return `mov ${op1},${op2}`;
+            return `mov ${op1} ${op2}`;
         case 1:
-            return `add ${op1},${op2}`;
+            return `add ${op1} ${op2}`;
         case 2:
-            return `cshl ${op1},${op2}`;
+            return `cshl ${op1} ${op2}`;
         case 3: // or
-            return `or ${op1},${op2}`;
+            return `or ${op1} ${op2}`;
         case 4: // and
-            return `and ${op1},${op2}`;
+            return `and ${op1} ${op2}`;
         case 5: // ssub (saturating sub)
-            return `ssub ${op1},${op2}`;
+            return `ssub ${op1} ${op2}`;
         case 6: // load V, A
-            return `ld ${op1},[${op2}]`;
+            return `ld ${op1} [${op2}]`;
         case 7: // store V, A
-            return `st ${op1},[${op2}]`;
+            return `st ${op1} [${op2}]`;
     }
 }
 
@@ -325,7 +328,6 @@ function main() {
             },
             scrollZoom: function(ev) {
                 ev.preventDefault();
-                console.log(ev);
 
                 if (ev.ctrlKey) {
                     // Zoom
