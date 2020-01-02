@@ -3,7 +3,6 @@
 // World itself (Level 0)
 const size = 128;
 
-
 function encodePos(cellIx) {
     return cellIx;
 }
@@ -177,7 +176,7 @@ class ConnectionView {
 
 
 function redraw(scale, originY) {
-    let canvas = document.getElementById("main");
+    const canvas = document.getElementById("main");
     const ctx = canvas.getContext("2d");
 
     ctx.fillStyle = "white";
@@ -202,8 +201,9 @@ function redraw(scale, originY) {
         });
     }
     
-    for (let i = 0; i < size; i++) {
-        const data = canonicalState.state[i];
+    for (let i = -32; i < size + 32; i++) {
+        const wrappedIx = (i + size) % size;
+        const data = canonicalState.state[wrappedIx];
 
         const numHex = ("0000" + data.toString(16)).substr(-4);
         const numDec = ("     " + data.toString(10)).substr(-5);
@@ -211,8 +211,8 @@ function redraw(scale, originY) {
 
         ctx.font = "10px 'Inconsolata'";
 
-        ctx.fillStyle = (i === canonicalState.currCellIx) ? "red" : "black";
-        ctx.fillText(("      " + i.toString(10)).substr(-6), 0, i * 10);
+        ctx.fillStyle = (wrappedIx === canonicalState.currCellIx) ? "red" : "black";
+        ctx.fillText(("      " + wrappedIx.toString(10)).substr(-6), 0, i * 10);
 
         ctx.fillStyle = "black";
         ctx.fillText(numHex, 40, i * 10);
@@ -221,7 +221,6 @@ function redraw(scale, originY) {
         ctx.fillStyle = instToExecFlag(data) ? "black" : "#888";
         ctx.fillText(inst, 100, i * 10);
     }
-
 
     ctx.restore();
 }
@@ -284,6 +283,10 @@ function instToString(instruction) {
     }
 }
 
+function fitCanvasToWindow() {
+    const canvas = document.getElementById("main");
+    canvas.height = window.innerHeight;
+}
 
 function main() {
     const vm = new Vue({
@@ -402,6 +405,9 @@ function main() {
         },
     });
 
+    window.addEventListener("resize", fitCanvasToWindow);
+
+    fitCanvasToWindow();
     cleanWorldState();
     addRandom();
     vm.startStepping();
