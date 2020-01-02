@@ -176,7 +176,7 @@ class ConnectionView {
 }
 
 
-function redraw(scale, originX) {
+function redraw(scale, originY) {
     let canvas = document.getElementById("main");
     const ctx = canvas.getContext("2d");
 
@@ -184,7 +184,7 @@ function redraw(scale, originX) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    ctx.translate(originX, 0);
+    ctx.translate(0, originY);
     ctx.scale(scale, scale);
 
     
@@ -206,14 +206,17 @@ function redraw(scale, originX) {
         const data = canonicalState.state[i];
         ctx.fillStyle = (i === canonicalState.currCellIx) ? "red" : (instToExecFlag(data) ? "black" : "gray");
 
-        const num = ("0000" + data.toString(16)).substr(-4);
+        const numHex = ("0000" + data.toString(16)).substr(-4);
+        const numDec = ("     " + data.toString(10)).substr(-5);
         const inst = instToString(data);
 
         ctx.font = "10px 'Inconsolata'";
-        ctx.fillText(num, i * 24, 20);
 
-        ctx.font = "3px sans-serif";
-        ctx.fillText(inst, i * 24, 25);
+        ctx.fillText(("      " + i.toString(10)).substr(-6), 0, i * 10);
+        ctx.fillText(numHex, 40, i * 10);
+        ctx.fillText(numDec, 65, i * 10);
+        ctx.fillText(inst, 100, i * 10);
+        //ctx.fillText(inst, 70, i * 10);
     }
 
 
@@ -288,39 +291,12 @@ function main() {
             numParticles: 0,
 
             // viewport
-            viewportScale: 10, // px/space
-            viewportOrigin: 0, // px
-
-            // drag control
-            captureMode: false,
-            dragging: false,
-            prevPos: 0,
-            selectionBox: null,
+            viewportScale: 2, // px/space
+            viewportOrigin: 25, // px
         },
         methods: {
             toSpace: function(pCanvas) {
                 return pCanvas.clone().sub(this.viewportOrigin).mult(1 / this.viewportScale);
-            },
-            dragStart: function(ev) {
-                this.dragging = true;
-                this.prevPos = ev.clientX;
-            },
-            dragStop: function() {
-                this.dragging = false;
-                this.redraw();
-            },
-            drag: function(ev) {
-                if (!this.dragging) {
-                    return;
-                }
-
-                const currPos = ev.clientX;
-                // normal: move canvas
-                const dx = ev.clientX - this.prevPos;
-                this.viewportOrigin += dx;
-                this.prevPos = currPos;
-
-                this.redraw();
             },
             clean: function() {
                 cleanParticles();
@@ -347,15 +323,23 @@ function main() {
                 this.numParticles = 0;
                 redraw(this.viewportScale, this.viewportOrigin);
             },
-            zoom: function(ev) {
+            scrollZoom: function(ev) {
                 ev.preventDefault();
+                console.log(ev);
 
-                // p = event.offsetX,Y must be preserved.
-                // p<canvas> = p<space> * zoom + t = p<ECA> * new_zoom + new_t
-                var centerXSp = (ev.offsetX - this.viewportOrigin) / this.viewportScale;
-                this.viewportScale = Math.min(20, Math.max(0.01, this.viewportScale * (1 - ev.deltaY * 0.002)));
+                if (ev.ctrlKey) {
+                    // Zoom
 
-                this.viewportOrigin = ev.offsetX - centerXSp * this.viewportScale;
+                    // p = event.offsetX,Y must be preserved.
+                    // p<canvas> = p<space> * zoom + t = p<ECA> * new_zoom + new_t
+                    var centerYSp = (ev.offsetY - this.viewportOrigin) / this.viewportScale;
+                    this.viewportScale = Math.min(2, Math.max(0.01, this.viewportScale * (1 - ev.deltaY * 0.002)));
+
+                    this.viewportOrigin = ev.offsetY - centerYSp * this.viewportScale;
+                } else {
+                    // Scroll
+                    this.viewportOrigin -= this.viewportScale * ev.deltaY * 0.2;
+                }
 
                 this.redraw();
             },

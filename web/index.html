@@ -9,8 +9,7 @@
 <body>
     <div id="app">
         <div>
-            <canvas id="main" width="800" height="400" @mousedown="dragStart" @mouseleave="dragStop" @mouseup="dragStop"
-                @mousemove="drag" @mousewheel="zoom"></canvas>
+            <canvas id="main" width="500" height="800" @mousewheel="scrollZoom"></canvas>
         </div>
 
         <button @click="clean">Clean</button>
