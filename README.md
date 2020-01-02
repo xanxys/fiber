@@ -33,7 +33,7 @@ introducing approximations.)
 --> most likely yes
 
 * Is there a non-trivial self-replicator in Fiber? --> probably, trying to construct one
-  * known smallest trivial replicator is 2-cell, `mov +3, +1; mov +1, -1;`
+  * known smallest trivial replicator is 2-cell, `mov +3, +1; mov +1, -1;` (`8080;8020;`)
 
 * Is Fiber capable of open-ended evolution?
 

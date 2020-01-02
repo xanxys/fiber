@@ -35,7 +35,7 @@ class WorldState {
 
         // exec(1), inst(3), op1(6), op2(6)
         const instruction = state[cellIx];
-        if ((instruction & 0x80) === 0) {
+        if ((instruction & 0x8000) === 0) {
             return;
         }
         const inst_type = (instruction >> 12) & 0x7;
@@ -245,7 +245,7 @@ function decodeAddress(size, baseCellIx, addr6) {
 }
 
 function instToExecFlag(instruction) {
-    return (instruction & 0x80) !== 0;
+    return (instruction & 0x8000) !== 0;
 }
 
 function addr6ToString(addr6) {
@@ -389,6 +389,7 @@ function main() {
             },
             writeSnippet: function() {
                 this.parseSnippet().forEach((v, i) => canonicalState.state[i] = v);
+                this.redraw();
             },
             readSnippet: function() {
                 const lines = [];
