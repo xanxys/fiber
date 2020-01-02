@@ -20,7 +20,13 @@
 
             <div>timestep={{timestep}}{{subtimestep === 0 ? "" : "." + subtimestep}}</div>
             <button @click="clickMicroStep">Micro Step</button>
-            
+
+            <br/>
+            <button @click="writeSnippet">←write to [0, {{currentSnippetSize-1}}]</button>
+            <br/>
+            <button @click="readSnippet">→read from [0, {{snippetSize-1}}]</button>
+            <br/>
+            <textarea v-model="snippetText" rows="50" cols="15" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
         </div>
     </div>
 

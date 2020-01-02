@@ -204,7 +204,7 @@ function redraw(world, scale, originY) {
         const wrappedIx = (i + world.size) % world.size;
         const data = world.state[wrappedIx];
 
-        const numHex = ("0000" + data.toString(16)).substr(-4);
+        const numHex = formatCellHex(data);
         const numDec = ("     " + data.toString(10)).substr(-5);
         const inst = instToString(data);
 
@@ -222,6 +222,10 @@ function redraw(world, scale, originY) {
     }
 
     ctx.restore();
+}
+
+function formatCellHex(v) {
+    return ("0000" + v.toString(16)).substr(-4);
 }
 
 function addRandom(n) {
@@ -285,6 +289,9 @@ function main() {
         data: {
             interval: null,
             tick: 0,
+
+            snippetSize: 50,
+            snippetText: "",
 
             // viewport
             viewportScale: 2, // px/space
@@ -380,13 +387,22 @@ function main() {
                     this.stopStepping();
                 }
             },
-            clickCapture: function() {
-                this.dragging = false;
-                this.stopStepping();
-                this.captureMode = true;
+            writeSnippet: function() {
+                this.parseSnippet().forEach((v, i) => canonicalState.state[i] = v);
+            },
+            readSnippet: function() {
+                const lines = [];
+                canonicalState.state.slice(0, this.snippetSize).forEach(v => lines.push(formatCellHex(v)));
+                this.snippetText = lines.join("\n");
+            },
+            parseSnippet: function() {
+                return this.snippetText.split("\n").map(x => x.trim()).filter(x => x !== "").map(x => parseInt(x, 16));
             },
         },
         computed: {
+            currentSnippetSize: function() {
+                return this.parseSnippet().length;
+            },
             timestep: function() {
                 return Math.floor(this.tick / canonicalState.size);
             },
@@ -401,6 +417,7 @@ function main() {
     fitCanvasToWindow();
     canonicalState.reset();
     addRandom();
+    vm.readSnippet();
     vm.startStepping();
 }
 
