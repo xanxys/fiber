@@ -2,17 +2,15 @@
 
 // World itself (Level 0)
 const size = 128;
-const numThread = 4;
-const topology = new Uint8Array(size * numThread);
 
 
-function encodePos(cellIx, threadIx) {
-    return cellIx * numThread + threadIx;
+function encodePos(cellIx) {
+    return cellIx;
 }
 
 class WorldState {
     constructor() {
-        this.state = new Uint16Array(size * numThread);
+        this.state = new Uint16Array(size);
         this.currThreadIx = 0
         this.currCellIx = 0;
     }
@@ -20,37 +18,31 @@ class WorldState {
     clone() {
         const st = new WorldState();
         st.state = new Uint16Array(this.state);
-        st.currThreadIx = this.currThreadIx;
         st.currCellIx = this.currCellIx;
         return st;
     }
 
     reset() {
-        this.currThreadIx = 0;
         this.currCellIx = 0;
         this.state.fill(0);
     }
 
     step() {
-        this.execInstruction(this.currThreadIx, this.currCellIx);
-        this.currThreadIx++;
-        if (this.currThreadIx >= numThread) {
-            this.currThreadIx = 0;
-            this.currCellIx = (this.currCellIx + 1) % size;
-        }
+        this.execInstruction(this.currCellIx);
+        this.currCellIx = (this.currCellIx + 1) % size;
     }
         
-    execInstruction(threadIx, cellIx) {
+    execInstruction(cellIx) {
         const state = this.state;
 
         // exec(1), inst(3), op1(6), op2(6)
-        const instruction = state[cellIx * numThread + threadIx];
+        const instruction = state[cellIx];
         if ((instruction & 0x80) === 0) {
             return;
         }
         const inst_type = (instruction >> 12) & 0x7;
-        const op1 = decodeAddress(threadIx, cellIx, (instruction >> 6) & 0x3f);
-        const op2 = decodeAddress(threadIx, cellIx, instruction & 0x3f);
+        const op1 = decodeAddress(cellIx, (instruction >> 6) & 0x3f);
+        const op2 = decodeAddress(cellIx, instruction & 0x3f);
         switch(inst_type) {
             case 0: // mov
                 state[op1] = state[op2];
@@ -72,10 +64,10 @@ class WorldState {
                 state[op1] = Math.max(0, state[op1] - state[op2]);
                 break;
             case 6: // load V, A
-                state[op1] = state[decodeAddress(threadIx, cellIx, state[op2] & 0x3f)];
+                state[op1] = state[decodeAddress(cellIx, state[op2] & 0x3f)];
                 break;
             case 7: // store V, A
-                state[decodeAddress(threadIx, cellIx, state[op2] & 0x3f)] = state[op1];
+                state[decodeAddress(cellIx, state[op2] & 0x3f)] = state[op1];
                 break;
         }
     }
@@ -87,7 +79,7 @@ const canonicalState = new WorldState();
 // World View: Connection by Effect (depends on L0)
 class ConnectionView {
     constructor() {
-        this.unionfind_parent = new Uint32Array(size * numThread);
+        this.unionfind_parent = new Uint32Array(size);
         this.disconnectAll();
     }
 
@@ -95,8 +87,8 @@ class ConnectionView {
         const stCopy = canonicalState.clone();
         this.disconnectAll();
 
-        for (let i = 0; i < numThread * size; i++) {
-            const src = encodePos(stCopy.currCellIx, stCopy.currThreadIx);
+        for (let i = 0; i < size; i++) {
+            const src = encodePos(stCopy.currCellIx);
             const affectedPos = this.getWrittenPos(stCopy);
             if (affectedPos !== null) {
                 this.connect(src, affectedPos);
@@ -115,14 +107,14 @@ class ConnectionView {
     }
 
     getWrittenPos(stCopy) {
-        const instruction = stCopy.state[stCopy.currCellIx * numThread + stCopy.currThreadIx];
+        const instruction = stCopy.state[stCopy.currCellIx];
         if ((instruction & 0x80) === 0) {
             return null;
         }
 
         const inst_type = (instruction >> 12) & 0x7;
-        const op1 = decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, (instruction >> 6) & 0x3f);
-        const op2 = decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, instruction & 0x3f);
+        const op1 = decodeAddress(stCopy.currCellIx, (instruction >> 6) & 0x3f);
+        const op2 = decodeAddress(stCopy.currCellIx, instruction & 0x3f);
         switch(inst_type) {
             case 0: // mov
             case 1: // add
@@ -134,12 +126,12 @@ class ConnectionView {
             case 6: // load V, A
                 return op1;
             case 7: // store V, A
-                return decodeAddress(stCopy.currThreadIx, stCopy.currCellIx, stCopy.state[op2] & 0x3f);
+                return decodeAddress(stCopy.currCellIx, stCopy.state[op2] & 0x3f);
         }
     }
 
     disconnectAll() {
-        for (let i = 0; i < size * numThread; i++) {
+        for (let i = 0; i < size; i++) {
             this.unionfind_parent[i] = i;
         }
     }
@@ -202,33 +194,26 @@ function redraw(scale, originX) {
     for (let entityIx = 0; entityIx < connectionEntities.length; entityIx++) {
         const color = colors[entityIx % 3];
         connectionEntities[entityIx].forEach(pos => {
-            const threadIx = pos % numThread;
-            const cellIx = Math.floor(pos / numThread);
+            const cellIx = pos;
 
             ctx.fillStyle = color;
-            console.log(threadIx, cellIx);
+            console.log(cellIx);
             ctx.fillRect(cellIx * 24, 20 * threadIx, 24, 20);
-
         });
-
     }
-
-
     
     for (let i = 0; i < size; i++) {
-        for (let threadIx = 0; threadIx < numThread; threadIx++) {
-            const data = canonicalState.state[i * numThread + threadIx];
-            ctx.fillStyle = (threadIx === canonicalState.currThreadIx && i === canonicalState.currCellIx) ? "red" : (instToExecFlag(data) ? "black" : "gray");
+        const data = canonicalState.state[i];
+        ctx.fillStyle = (i === canonicalState.currCellIx) ? "red" : (instToExecFlag(data) ? "black" : "gray");
 
-            const num = ("0000" + data.toString(16)).substr(-4);
-            const inst = instToString(data);
+        const num = ("0000" + data.toString(16)).substr(-4);
+        const inst = instToString(data);
 
-            ctx.font = "10px 'Inconsolata'";
-            ctx.fillText(num, i * 24, 20 * (threadIx + 1));
+        ctx.font = "10px 'Inconsolata'";
+        ctx.fillText(num, i * 24, 20);
 
-            ctx.font = "3px sans-serif";
-            ctx.fillText(inst, i * 24, 20 * (threadIx + 1) + 5);
-        }
+        ctx.font = "3px sans-serif";
+        ctx.fillText(inst, i * 24, 25);
     }
 
 
@@ -236,33 +221,12 @@ function redraw(scale, originX) {
 }
 
 function cleanParticles() {
-    // Generate random topology
-    const permutation = new Array(numThread);
-    for (let cellIx = 0; cellIx < size; cellIx++) {
-        // Randomize permutation
-        for (let i = numThread - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
-        }
-
-        // Pair-wise tangling
-        for (let i = 0; i < numThread; i+=2) {
-            const thread0 = permutation[i];
-            const thread1 = permutation[(i + 1) % numThread];
-
-            topology[cellIx * numThread + thread0] = thread1;
-            topology[cellIx * numThread + thread1] = thread0;
-        }
-    }
-
     canonicalState.reset();
 }
 
 function addRandom(n) {
     for (let cellIx = 0; cellIx < n; cellIx++) {
-        for (let threadIx = 0; threadIx < 1; threadIx++) {
-            canonicalState.state[cellIx * numThread + threadIx] = Math.floor(Math.random() * 0xffff);
-        }
+        canonicalState.state[cellIx] = Math.floor(Math.random() * 0xffff);
     }
 }
 
@@ -270,15 +234,14 @@ function step() {
     canonicalState.step();
 }
 
-function decodeAddress(baseThreadIx, baseCellIx, addr6) {
-    const alt = (addr6 & 0x20) !== 0; // TODO: implement
-    const negative = (addr6 & 0x10) !== 0;
-    const abs_val = (addr6 & 0xf) + 1;
+// <neg:1> <delta_addr:5> (1-origin, -32~-1, +1~+32)
+function decodeAddress(baseCellIx, addr6) {
+    const negative = (addr6 & 0x20) !== 0;
+    const abs_val = (addr6 & 0x1f) + 1;
     const val = negative ? -abs_val : abs_val;
 
-    const threadIx = alt ? topology[baseCellIx * numThread + baseThreadIx] : baseThreadIx;
     const cellIx = (baseCellIx + val + size) % size;
-    return cellIx * numThread + threadIx;
+    return cellIx;
 }
 
 function instToExecFlag(instruction) {
@@ -286,10 +249,9 @@ function instToExecFlag(instruction) {
 }
 
 function addr6ToString(addr6) {
-    const alt = (addr6 & 0x20) !== 0; // TODO: implement
-    const negative = (addr6 & 0x10) !== 0;
-    const abs_val = (addr6 & 0xf) + 1;
-    return (alt ? "|" : "") + (negative ? "-" : "+") + abs_val.toString();
+    const negative = (addr6 & 0x20) !== 0;
+    const abs_val = (addr6 & 0x1f) + 1;
+    return (negative ? "-" : "+") + abs_val.toString();
 }
 
 function instToString(instruction) {
@@ -402,7 +364,7 @@ function main() {
                     return;
                 }
                 this.interval = setInterval(() => {
-                    for (let i = 0; i < numThread * size; i++) {
+                    for (let i = 0; i < size; i++) {
                         step();
                         this.tick += 1;
                     }
@@ -432,6 +394,14 @@ function main() {
                 this.dragging = false;
                 this.stopStepping();
                 this.captureMode = true;
+            },
+        },
+        computed: {
+            timestep: function() {
+                return Math.floor(this.tick / size);
+            },
+            subtimestep: function() {
+                return this.tick % size;
             },
         },
     });
