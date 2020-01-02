@@ -1,14 +1,13 @@
 "use strict";
 
 // World itself (Level 0)
-const size = 128;
-
 function encodePos(cellIx) {
     return cellIx;
 }
 
 class WorldState {
-    constructor() {
+    constructor(size) {
+        this.size = size;
         this.state = new Uint16Array(size);
         this.currThreadIx = 0
         this.currCellIx = 0;
@@ -28,7 +27,7 @@ class WorldState {
 
     step() {
         this.execInstruction(this.currCellIx);
-        this.currCellIx = (this.currCellIx + 1) % size;
+        this.currCellIx = (this.currCellIx + 1) % this.size;
     }
         
     execInstruction(cellIx) {
@@ -40,8 +39,8 @@ class WorldState {
             return;
         }
         const inst_type = (instruction >> 12) & 0x7;
-        const op1 = decodeAddress(cellIx, (instruction >> 6) & 0x3f);
-        const op2 = decodeAddress(cellIx, instruction & 0x3f);
+        const op1 = decodeAddress(this.size, cellIx, (instruction >> 6) & 0x3f);
+        const op2 = decodeAddress(this.size, cellIx, instruction & 0x3f);
         switch(inst_type) {
             case 0: // mov
                 state[op1] = state[op2];
@@ -63,30 +62,31 @@ class WorldState {
                 state[op1] = Math.max(0, state[op1] - state[op2]);
                 break;
             case 6: // load V, A
-                state[op1] = state[decodeAddress(cellIx, state[op2] & 0x3f)];
+                state[op1] = state[decodeAddress(this.size, cellIx, state[op2] & 0x3f)];
                 break;
             case 7: // store V, A
-                state[decodeAddress(cellIx, state[op2] & 0x3f)] = state[op1];
+                state[decodeAddress(this.size, cellIx, state[op2] & 0x3f)] = state[op1];
                 break;
         }
     }
 
 }
 
-const canonicalState = new WorldState();
+const canonicalState = new WorldState(128);
 
 // World View: Connection by Effect (depends on L0)
 class ConnectionView {
-    constructor() {
-        this.unionfind_parent = new Uint32Array(size);
+    constructor(world) {
+        this.world = world;
+        this.unionfind_parent = new Uint32Array(world.size);
         this.disconnectAll();
     }
 
     analyzeSingleSweep() {
-        const stCopy = canonicalState.clone();
+        const stCopy = this.world.clone();
         this.disconnectAll();
 
-        for (let i = 0; i < size; i++) {
+        for (let i = 0; i < this.world.size; i++) {
             const src = encodePos(stCopy.currCellIx);
             const affectedPos = this.getWrittenPos(stCopy);
             if (affectedPos !== null) {
@@ -130,7 +130,7 @@ class ConnectionView {
     }
 
     disconnectAll() {
-        for (let i = 0; i < size; i++) {
+        for (let i = 0; i < this.world.size; i++) {
             this.unionfind_parent[i] = i;
         }
     }
@@ -175,7 +175,7 @@ class ConnectionView {
 }
 
 
-function redraw(scale, originY) {
+function redraw(world, scale, originY) {
     const canvas = document.getElementById("main");
     const ctx = canvas.getContext("2d");
 
@@ -187,7 +187,7 @@ function redraw(scale, originY) {
     ctx.scale(scale, scale);
 
     
-    const connectionView = new ConnectionView();
+    const connectionView = new ConnectionView(canonicalState);
     const connectionEntities = connectionView.analyzeSingleSweep();
     const colors = ["lightblue", "lightgreen", "lightpink", "lightcoral", "lightsalmon"];
     for (let entityIx = 0; entityIx < connectionEntities.length; entityIx++) {
@@ -196,14 +196,13 @@ function redraw(scale, originY) {
             const cellIx = pos;
 
             ctx.fillStyle = color;
-            console.log(cellIx);
             ctx.fillRect(0, cellIx * 10 + 2, 300, 10);
         });
     }
     
-    for (let i = -32; i < size + 32; i++) {
-        const wrappedIx = (i + size) % size;
-        const data = canonicalState.state[wrappedIx];
+    for (let i = -32; i < world.size + 32; i++) {
+        const wrappedIx = (i + world.size) % world.size;
+        const data = world.state[wrappedIx];
 
         const numHex = ("0000" + data.toString(16)).substr(-4);
         const numDec = ("     " + data.toString(10)).substr(-5);
@@ -211,7 +210,7 @@ function redraw(scale, originY) {
 
         ctx.font = "10px 'Inconsolata'";
 
-        ctx.fillStyle = (wrappedIx === canonicalState.currCellIx) ? "red" : "black";
+        ctx.fillStyle = (wrappedIx === world.currCellIx) ? "red" : "black";
         ctx.fillText(("      " + wrappedIx.toString(10)).substr(-6), 0, i * 10);
 
         ctx.fillStyle = "black";
@@ -225,22 +224,14 @@ function redraw(scale, originY) {
     ctx.restore();
 }
 
-function cleanWorldState() {
-    canonicalState.reset();
-}
-
 function addRandom(n) {
     for (let cellIx = 0; cellIx < n; cellIx++) {
         canonicalState.state[cellIx] = Math.floor(Math.random() * 0xffff);
     }
 }
 
-function step() {
-    canonicalState.step();
-}
-
 // <neg:1> <delta_addr:5> (1-origin, -32~-1, +1~+32)
-function decodeAddress(baseCellIx, addr6) {
+function decodeAddress(size, baseCellIx, addr6) {
     const negative = (addr6 & 0x20) !== 0;
     const abs_val = (addr6 & 0x1f) + 1;
     const val = negative ? -abs_val : abs_val;
@@ -305,7 +296,7 @@ function main() {
             },
             clean: function() {
                 this.stopStepping();
-                cleanWorldState();
+                canonicalState.reset();
                 this.tick = 0;
                 this.redraw();
             },
@@ -314,7 +305,7 @@ function main() {
                 this.redraw();
             },
             redraw: function() {
-                redraw(this.viewportScale, this.viewportOrigin);
+                redraw(canonicalState, this.viewportScale, this.viewportOrigin);
             },
             scrollZoom: function(ev) {
                 ev.preventDefault();
@@ -341,8 +332,8 @@ function main() {
                 }
                 this.finishMicrostep();
                 this.interval = setInterval(() => {
-                    for (let i = 0; i < size; i++) {
-                        step();
+                    for (let i = 0; i < canonicalState.size; i++) {
+                        canonicalState.step();
                         this.tick += 1;
                     }
                     this.redraw();
@@ -357,8 +348,8 @@ function main() {
             },
             clickStep: function() {
                 if (this.finishMicrostep()) {
-                    for (var i = 0; i < size; i++) {
-                        step();
+                    for (var i = 0; i < canonicalState.size; i++) {
+                        canonicalState.step();
                         this.tick += 1;
                     }
                 }
@@ -366,19 +357,19 @@ function main() {
             },
             /// returns: already finished
             finishMicrostep: function() {
-                if (this.tick % size === 0) {
+                if (this.tick % canonicalState.size === 0) {
                     return true;
                 }
                 
-                var remaining = size - this.tick % size;
+                var remaining = canonicalState.size - this.tick % canonicalState.size;
                 for (var i = 0; i < remaining; i++) {
-                    step();
+                    canonicalState.step();
                     this.tick += 1;
                 }
                 return false;
             },
             clickMicroStep: function() {
-                step();
+                canonicalState.step();
                 this.tick += 1;
                 this.redraw();
             },
@@ -397,10 +388,10 @@ function main() {
         },
         computed: {
             timestep: function() {
-                return Math.floor(this.tick / size);
+                return Math.floor(this.tick / canonicalState.size);
             },
             subtimestep: function() {
-                return this.tick % size;
+                return this.tick % canonicalState.size;
             },
         },
     });
@@ -408,7 +399,7 @@ function main() {
     window.addEventListener("resize", fitCanvasToWindow);
 
     fitCanvasToWindow();
-    cleanWorldState();
+    canonicalState.reset();
     addRandom();
     vm.startStepping();
 }
