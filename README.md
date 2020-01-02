@@ -12,18 +12,18 @@ Very simple (e.g. Conways's Life) system requires too elaborate structure to ach
 and it's inconceivable to observe emergence of "innovative" evolutuion in realistic compute resource.
 
 On the other hand, some AL systems (e.g. Tierra) has hard-coded notion of self-replicating entities, which makes it easier to observe
-some low-level evolutionary phenomena (e.g. parasitism, gene transfer), but makes it denies oppurtunity to observe emergence of
+some low-level evolutionary phenomena (e.g. parasitism, gene transfer), but it denies oppurtunity to observe emergence of
 replicating system.
 
 Fiber tries to be simple enough to leave room for emergence, yet complex enough to allow manual construction (programming)
-of self replicating state.
+of non-trivial self replicator.
 
 ### 2. Efficient, deterministic execution
 Lots of AL systems uses 2D/3D chemistry/physics and/or floating points, which makes efficient execution almost impossible.
-Non-determinism arising from floating point also makes it much harder to reproduce experimental results.
+Non-determinism arising from floating point and implementation complexity also makes it much harder to reproduce experimental results.
 
 Cellular-automata / core-world based systems are much better in performance aspect.
-(I'm disregarding HashLife algorithm, because I believe complex multi-level systems cannot be compressed efficiently without
+(I'm disregarding HashLife algorithm here, because I believe complex multi-level systems cannot be compressed efficiently without
 introducing approximations.)
 
 
