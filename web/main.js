@@ -14,7 +14,7 @@ class WorldState {
     }
 
     clone() {
-        const st = new WorldState();
+        const st = new WorldState(this.size);
         st.state = new Uint16Array(this.state);
         st.currCellIx = this.currCellIx;
         return st;
@@ -95,13 +95,13 @@ class ConnectionView {
             stCopy.step();
         }
 
-        console.log("num groups=", new Array(new Array(this.getGroups().values()).filter(g => g.length > 1)).length);
         const gs = [];
         for (let g of this.getGroups().values()) {
             if (g.length > 1) {
                 gs.push(g);
             }
         }
+        console.log("num groups=", gs.length);
         return gs;
     }
 
