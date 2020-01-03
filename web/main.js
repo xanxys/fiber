@@ -1,76 +1,5 @@
 "use strict";
-
-// World itself (Level 0)
-function encodePos(cellIx) {
-    return cellIx;
-}
-
-class WorldState {
-    constructor(size) {
-        this.size = size;
-        this.state = new Uint16Array(size);
-        this.currThreadIx = 0
-        this.currCellIx = 0;
-    }
-
-    clone() {
-        const st = new WorldState(this.size);
-        st.state = new Uint16Array(this.state);
-        st.currCellIx = this.currCellIx;
-        return st;
-    }
-
-    reset() {
-        this.currCellIx = 0;
-        this.state.fill(0);
-    }
-
-    step() {
-        this.execInstruction(this.currCellIx);
-        this.currCellIx = (this.currCellIx + 1) % this.size;
-    }
-        
-    execInstruction(cellIx) {
-        const state = this.state;
-
-        // exec(1), inst(3), op1(6), op2(6)
-        const instruction = state[cellIx];
-        if ((instruction & 0x8000) === 0) {
-            return;
-        }
-        const inst_type = (instruction >> 12) & 0x7;
-        const op1 = decodeAddress(this.size, cellIx, (instruction >> 6) & 0x3f);
-        const op2 = decodeAddress(this.size, cellIx, instruction & 0x3f);
-        switch(inst_type) {
-            case 0: // mov
-                state[op1] = state[op2];
-                break;
-            case 1: // add
-                state[op1] = (state[op1] + state[op2]) & 0xffff;
-                break;
-            case 2: // cshl (cyclic shift left)
-                const v = state[op1] << (state[op2] % 16);
-                state[op1] = (v & 0xffff) | (v >> 16);
-                break;
-            case 3: // or
-                state[op1] |= state[op2];
-                break;
-            case 4: // and
-                state[op1] &= state[op2];
-                break;
-            case 5: // ssub (saturating sub)
-                state[op1] = Math.max(0, state[op1] - state[op2]);
-                break;
-            case 6: // load V, A
-                state[op1] = state[decodeAddress(this.size, cellIx, state[op2] & 0x3f)];
-                break;
-            case 7: // store V, A
-                state[decodeAddress(this.size, cellIx, state[op2] & 0x3f)] = state[op1];
-                break;
-        }
-    }
-
-}
+import {WorldState, decodeAddress, decodeExecFlag} from "./fiber.js";
 
 const canonicalState = new WorldState(128);
 
@@ -87,7 +16,7 @@ class ConnectionView {
         this.disconnectAll();
 
         for (let i = 0; i < this.world.size; i++) {
-            const src = encodePos(stCopy.currCellIx);
+            const src = stCopy.currCellIx;
             const affectedPos = this.getWrittenPos(stCopy);
             if (affectedPos !== null) {
                 this.connect(src, affectedPos);
@@ -174,7 +103,6 @@ class ConnectionView {
     }
 }
 
-
 function redraw(world, scale, originY) {
     const canvas = document.getElementById("main");
     const ctx = canvas.getContext("2d");
@@ -217,7 +145,7 @@ function redraw(world, scale, originY) {
         ctx.fillText(numHex, 40, i * 10);
         ctx.fillText(numDec, 65, i * 10);
 
-        ctx.fillStyle = instToExecFlag(data) ? "black" : "#888";
+        ctx.fillStyle = decodeExecFlag(data) ? "black" : "#888";
         ctx.fillText(inst, 100, i * 10);
     }
 
@@ -232,20 +160,6 @@ function addRandom(n) {
     for (let cellIx = 0; cellIx < n; cellIx++) {
         canonicalState.state[cellIx] = Math.floor(Math.random() * 0xffff);
     }
-}
-
-// <neg:1> <delta_addr:5> (1-origin, -32~-1, +1~+32)
-function decodeAddress(size, baseCellIx, addr6) {
-    const negative = (addr6 & 0x20) !== 0;
-    const abs_val = (addr6 & 0x1f) + 1;
-    const val = negative ? -abs_val : abs_val;
-
-    const cellIx = (baseCellIx + val + size) % size;
-    return cellIx;
-}
-
-function instToExecFlag(instruction) {
-    return (instruction & 0x8000) !== 0;
 }
 
 function addr6ToString(addr6) {
