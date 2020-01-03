@@ -1,5 +1,6 @@
 "use strict";
 import {WorldState, decodeAddress, decodeExecFlag} from "./fiber.js";
+import {parseSingle, addr6ToString, instToString} from "./fiber-asm.js";
 
 const canonicalState = new WorldState(128);
 
@@ -162,36 +163,6 @@ function addRandom(n) {
     }
 }
 
-function addr6ToString(addr6) {
-    const negative = (addr6 & 0x20) !== 0;
-    const abs_val = (addr6 & 0x1f) + 1;
-    return (negative ? "-" : "+") + abs_val.toString();
-}
-
-function instToString(instruction) {
-    const inst_type = (instruction >> 12) & 0x7;
-    const op1 = addr6ToString((instruction >> 6) & 0x3f);
-    const op2 = addr6ToString(instruction & 0x3f);
-    switch(inst_type) {
-        case 0:
-            return `mov ${op1} ${op2}`;
-        case 1:
-            return `add ${op1} ${op2}`;
-        case 2:
-            return `cshl ${op1} ${op2}`;
-        case 3: // or
-            return `or ${op1} ${op2}`;
-        case 4: // and
-            return `and ${op1} ${op2}`;
-        case 5: // ssub (saturating sub)
-            return `ssub ${op1} ${op2}`;
-        case 6: // load V, A
-            return `ld ${op1} [${op2}]`;
-        case 7: // store V, A
-            return `st ${op1} [${op2}]`;
-    }
-}
-
 function fitCanvasToWindow() {
     const canvas = document.getElementById("main");
     canvas.height = window.innerHeight;
@@ -307,11 +278,23 @@ function main() {
             },
             readSnippet: function() {
                 const lines = [];
-                canonicalState.state.slice(0, this.snippetSize).forEach(v => lines.push(formatCellHex(v)));
+                canonicalState.state.slice(0, this.snippetSize).forEach(v => {
+                    if (decodeExecFlag(v)) {
+                        lines.push(instToString(v));
+                    } else {
+                        lines.push(formatCellHex(v));
+                    }
+                });
                 this.snippetText = lines.join("\n");
             },
             parseSnippet: function() {
-                return this.snippetText.split("\n").map(x => x.trim()).filter(x => x !== "").map(x => parseInt(x, 16));
+                return this.snippetText.split("\n").map(x => x.trim()).filter(x => x !== "").map(x => {
+                    const inst = parseSingle(x);
+                    if (inst !== null) {
+                        return inst;
+                    }
+                    return parseInt(x, 16);
+                });
             },
         },
         computed: {
