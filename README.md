@@ -40,9 +40,9 @@ introducing approximations.)
 ## "Easy" Questions to Understand Fiber Programming
 Assume Fiber-1M where most cells are 0-filled initially, and only first K (<1000 or so) cells are "programmable".
 
-Q1a. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 1000.
+Q1a. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 10000.
 
-Q1b. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 1000 + (initial value of cell 1 (non-executable)).
+Q1b. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 10000 + (initial value of cell 1 (non-executable)).
 
 Q1c. Create an initial state that eventually copies value (non-executable) of cell 0, to cell 500*1000.
 
