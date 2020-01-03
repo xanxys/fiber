@@ -40,15 +40,19 @@ introducing approximations.)
 ## "Easy" Questions to Understand Fiber Programming
 Assume Fiber-1M where most cells are 0-filled initially, and only first K (<1000 or so) cells are "programmable".
 
-Q1. Create an initial state that eventually copies value (non-executable) of cell 0, to cell 500*1000.
+Q1a. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 1000.
 
-Q2. Extennsion of Q1: Instead of cell 0, copy cell 0...cell A-1 to cell 500\*1000...500\*1000+A-1.
+Q1b. Create an initial state that eventually copies any value (non-executable) of cell 0, to cell 1000 + (initial value of cell 1 (non-executable)).
 
-Q3. Prove Turing-completeness; Come up with a mapping function (input: brainfuck program, output: finite initial state) that interprets the program.
+Q1c. Create an initial state that eventually copies value (non-executable) of cell 0, to cell 500*1000.
 
-Q4. Is Q3 possible when input mapping is much more limited? (e.g. 0-delimited raw branfuck code ++ interpreter state)?
+Q1d. Extennsion of Q1: Instead of cell 0, copy cell 0...cell A-1 to cell 500\*1000...500\*1000+A-1.
 
-Q5. Come up with a self-repairing boundary system that allows "entities" like in Q1~Q4 can co-exist.
+Q2. Prove Turing-completeness; Come up with a mapping function (input: brainfuck program, output: finite initial state) that interprets the program.
+
+Q3. Is Q3 possible when input mapping is much more limited? (e.g. 0-delimited raw branfuck code ++ interpreter state)?
+
+Q4. Come up with a self-repairing boundary system that allows "entities" like in Q1~Q4 can co-exist.
 
 
 ## Fiber Spec
