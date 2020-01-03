@@ -2,7 +2,7 @@
 import {WorldState, decodeAddress, decodeExecFlag} from "./fiber.js";
 import {parseSingle, addr6ToString, instToString} from "./fiber-asm.js";
 
-const canonicalState = new WorldState(128);
+const canonicalState = new WorldState(1000);
 
 // World View: Connection by Effect (depends on L0)
 class ConnectionView {
