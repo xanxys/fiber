@@ -82,14 +82,14 @@ MSB                                     LSB
 
 | inst | mnemonic | definition |
 ----|----|----
-| 0 | mov op1, op2 | `cell[op1] := cell[op2]` |
-| 1 | add op1, op2 | `cell[op1] := (cell[op1] + cell[op2]) & 0xffff` |
-| 2 | cshl op1, op2 (cyclic shift left)| `v := cell[op1] << (cell[op2] % 16); cell[op1] = (v & 0xffff) \| (v >> 16)` |
-| 3 | or op1, op2 | `cell[op1] := cell[op1] \| cell[op2]` |
-| 4 | and op1, op2 | `cell[op1] := cell[op1] & cell[op2]` |
-| 5 | ssub op1, op2 (saturating sub) | `cell[op1] := max(0, cell[op1] - cell[op2])` |
-| 6 | ld op1, op2 | `cell[op1] := cell[cell[op2] & 0x3f]` |
-| 7 | st op1, op2 | `cell[cell[op2] & 0x3f] := cell[op1]`|
+| 0 | mov d s | `C[d] := C[s]` |
+| 1 | add d s | `C[d] := (C[d] + C[s]) & 0xffff` |
+| 2 | cshl d s (cyclic shift left)| `v := C[d] << (C[s] % 16); C[d] := (v & 0xffff) | (v >> 16)` |
+| 3 | or d s | `C[d] := C[d] | C[s]` |
+| 4 | and d s | `C[d] := C[d] & C[s]` |
+| 5 | ssub d s (saturating sub) | `C[d] := max(0, C[d] - C[s])` |
+| 6 | ld d \[a\] | `C[d] := C[C[a] & 0x3f]` |
+| 7 | st s \[a\] | `C[C[a] & 0x3f] := C[s]`|
 
 Address is 6-bit value, which is interpreted as relative address from -32 ~ +32 (excluding 0).
 ```
