@@ -84,8 +84,8 @@ MSB                                     LSB
 ----|----|----
 | 0 | mov d s | `C[d] := C[s]` |
 | 1 | add d s | `C[d] := (C[d] + C[s]) & 0xffff` |
-| 2 | cshl d s (cyclic shift left)| `v := C[d] << (C[s] % 16); C[d] := (v & 0xffff) | (v >> 16)` |
-| 3 | or d s | `C[d] := C[d] | C[s]` |
+| 2 | cshl d s (cyclic shift left)| `v := C[d] << (C[s] % 16); C[d] := (v & 0xffff) \| (v >> 16)` |
+| 3 | or d s | `C[d] := C[d] \| C[s]` |
 | 4 | and d s | `C[d] := C[d] & C[s]` |
 | 5 | ssub d s (saturating sub) | `C[d] := max(0, C[d] - C[s])` |
 | 6 | ld d \[a\] | `C[d] := C[C[a] & 0x3f]` |
